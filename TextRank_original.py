@@ -1,7 +1,6 @@
 import networkx
 import re
 import json
-
         
 
 class RawSentence:
@@ -20,18 +19,31 @@ class RawSentence:
                 yield s
 
 
+# class RawSentenceReader:
+#     def __init__(self, filepath):
+#         self.filepath = filepath
+#         self.rgxSplitter = re.compile('([.!?:](?:["\']|(?![0-9])))')
+
+#     def __iter__(self):
+#         for line in open(self.filepath, encoding='utf-8'):
+#             ch = self.rgxSplitter.split(line)
+#             for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
+#                 if not s: continue
+#                 yield s
+
 class RawSentenceReader:
-    def __init__(self, filepath):
-        self.filepath = filepath
+    def __init__(self, text):
+        self.text = text
+        #self.filepath = filepath
         self.rgxSplitter = re.compile('([.!?:](?:["\']|(?![0-9])))')
 
     def __iter__(self):
-        for line in open(self.filepath, encoding='utf-8'):
+        #for line in open(self.text, encoding='utf-8'):
+        for line in self.text:
             ch = self.rgxSplitter.split(line)
             for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
                 if not s: continue
                 yield s
-
 
 class RawTagger:
     def __init__(self, textIter, tagger=None):
@@ -204,17 +216,38 @@ class TextRank:
         #ks = sorted(r, key=r.get, reverse=False)[:3]
         #ks = sorted(r, key=r.get, reverse=True)[:3]
         return ' '.join(map(lambda k: self.dictCount[k], sorted(ks)))
+#main
+# tr = TextRank()
+# print('Load...')
+# from konlpy.tag import Komoran
+# tagger = Komoran()
+# stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
 
-tr = TextRank()
-print('Load...')
-from konlpy.tag import Komoran
-tagger = Komoran()
-stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
-def run:
-    tr.loadSents(RawSentenceReader('./test5.txt'), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
+# tr.loadSents(RawSentenceReader('./test5.txt'), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
+# print('Build...')
+# tr.build()
+# ranks = tr.rank()
+# for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
+#     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
+# print(tr.summarize(0.1))
+
+with open('./text.json') as json_file:
+    data = json.load(json_file)
+# tr = TextRank()
+# from konlpy.tag import Komoran
+# tagger = Komoran()
+# stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
+for i in data:
+    text = i['body']
+    tr = TextRank()
+    from konlpy.tag import Komoran
+    tagger = Komoran()
+    stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
+    tr.loadSents(RawSentenceReader(text), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
     print('Build...')
     tr.build()
     ranks = tr.rank()
     for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
         print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
     print(tr.summarize(0.1))
+    print('complete')
