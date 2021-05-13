@@ -219,7 +219,7 @@ class TextRank:
         #ks = sorted(r, key=r.get, reverse=True)[:int(len(r) * ratio)]
         #ks = sorted(r, key=r.get, reverse=False)[:3]
         #ks = sorted(r, key=r.get, reverse=True)[:3]
-        return ' '.join(map(lambda k: self.dictCount[k], sorted(ks)))
+        return '\n'.join(map(lambda k: self.dictCount[k], sorted(ks)))
 #main
 # tr = TextRank()
 # print('Load...')
@@ -235,7 +235,7 @@ class TextRank:
 #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
 # print(tr.summarize(0.1))
 if __name__=='__main__':
-    with open('./result.json') as json_file:
+    with open('./result1.json') as json_file:
         data = json.load(json_file)
     # tr = TextRank()
     # from konlpy.tag import Komoran
