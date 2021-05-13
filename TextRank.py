@@ -1,10 +1,20 @@
+import os, io
 import networkx
 import re
+import json
+import chardet
+from multiprocessing import Pipe, Process
 
+
+with open('./result.json') as json_file:
+        data = json.load(json_file)
+#안쓰고
 class RawSentence:
     def __init__(self, textIter):
         if type(textIter) == str:
             self.textIter = textIter.split('\n')
+        elif type(textIter) == str:
+            self.textIter = textIter.split('.')    
         else:
             self.textIter = textIter
         self.rgxSplitter = re.compile('([.!?:](?:["\']|(?![0-9])))')
@@ -17,19 +27,32 @@ class RawSentence:
                 yield s
 
 
+# class RawSentenceReader:
+#     def __init__(self, filepath):
+#         self.filepath = filepath
+#         self.rgxSplitter = re.compile('([.!?:](?:["\']|(?![0-9])))')
+
+#     def __iter__(self):
+#         for line in open(self.filepath, encoding='utf-8'):
+#             ch = self.rgxSplitter.split(line)
+#             for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
+#                 if not s: continue
+#                 yield s
+
 class RawSentenceReader:
-    def __init__(self, filepath):
-        self.filepath = filepath
+    def __init__(self, text):
+        self.text = text
+        #self.filepath = filepath
         self.rgxSplitter = re.compile('([.!?:](?:["\']|(?![0-9])))')
 
     def __iter__(self):
-        for line in open(self.filepath, encoding='utf-8'):
-            ch = self.rgxSplitter.split(line)
-            for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
-                if not s: continue
-                yield s
-
-
+        #for line in open(self.text, encoding='utf-8'):
+        line = self.text
+        ch = self.rgxSplitter.split(line)
+        for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
+            if not s: continue
+            yield s
+#안쓰고
 class RawTagger:
     def __init__(self, textIter, tagger=None):
         if tagger:
@@ -53,7 +76,7 @@ class RawTagger:
                 if not s: continue
                 yield self.tagger.pos(s)
 
-
+#안쓰고
 class RawTaggerReader:
     def __init__(self, filepath, tagger=None):
         if tagger:
@@ -200,17 +223,65 @@ class TextRank:
         #ks = sorted(r, key=r.get, reverse=True)[:int(len(r) * ratio)]
         #ks = sorted(r, key=r.get, reverse=False)[:3]
         #ks = sorted(r, key=r.get, reverse=True)[:3]
-        return ' '.join(map(lambda k: self.dictCount[k], sorted(ks)))
+        return '\n'.join(map(lambda k: self.dictCount[k], sorted(ks)))
+#main
+# tr = TextRank()
+# print('Load...')
+# from konlpy.tag import Komoran
+# tagger = Komoran()
+# stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
 
-tr = TextRank()
-print('Load...')
-from konlpy.tag import Komoran
-tagger = Komoran()
-stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
-tr.loadSents(RawSentenceReader('./test5.txt'), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
-print('Build...')
-tr.build()
-ranks = tr.rank()
-for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
-    print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
-print(tr.summarize(0.1))
+# tr.loadSents(RawSentenceReader('./test5.txt'), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
+# print('Build...')
+# tr.build()
+# ranks = tr.rank()
+# for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
+#     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
+# print(tr.summarize(0.1))
+
+def rank(i,conn):
+    text = i['body']
+    # print(re.compile('([.!?:](?:["\']|(?![0-9])))').split(text))
+    tr = TextRank()
+    from konlpy.tag import Komoran
+    tagger = Komoran()
+    stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
+    tr.loadSents(RawSentenceReader(text), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
+    # print('Build...')
+    tr.build()
+    # ranks = tr.rank()
+    # for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
+    #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
+    # print(i['source'])
+    # print(tr.summarize(0.1))
+    conn.send([tr.summarize(0.1)])
+    conn.close()
+
+if __name__=='__main__':
+    # with open('./result.json') as json_file:
+    #     data = json.load(json_file)
+    # tr = TextRank()
+    # from konlpy.tag import Komoran
+    # tagger = Komoran()
+    # stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
+    result=[]
+        
+    processes = []
+    parent_connections = []
+    for i  in data:
+        parent_conn, child_conn=Pipe()
+        p=Process(target=rank, args=(i,child_conn,))
+        parent_connections.append(parent_conn)
+        processes.append(p)
+
+    for process in processes:
+        process.start()
+            
+    for process in processes:
+        process.join()    
+
+    for parent_connection in parent_connections:
+        result.append(parent_connection.recv())
+    print(result)
+
+            
