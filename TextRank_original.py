@@ -1,7 +1,11 @@
+import os, io
 import networkx
 import re
 import json
-        
+import chardet
+from multiprocessing import Pipe, Process
+from konlpy.tag import Komoran
+import multiprocessing
 
 class RawSentence:
     def __init__(self, textIter):
@@ -230,24 +234,22 @@ class TextRank:
 # for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
 #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
 # print(tr.summarize(0.1))
-
-with open('./result.json') as json_file:
-    data = json.load(json_file)
-# tr = TextRank()
-# from konlpy.tag import Komoran
-# tagger = Komoran()
-# stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
-for i in data:
-    text = i['body']
-    tr = TextRank()
-    from konlpy.tag import Komoran
+if __name__=='__main__':
+    with open('./result.json') as json_file:
+        data = json.load(json_file)
+    # tr = TextRank()
+    # from konlpy.tag import Komoran
+    # tagger = Komoran()
+    # stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
     tagger = Komoran()
-    stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
-    tr.loadSents(RawSentenceReader(text), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
-    print('Build...')
-    tr.build()
-    ranks = tr.rank()
-    for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
-        print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
-    print(tr.summarize(0.1))
-    print('complete')
+    for i in data:
+        print('----------------------------------------------')
+        text = i['body']
+        tr = TextRank()
+        stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
+        tr.loadSents(RawSentenceReader(text), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
+        tr.build()
+        # ranks = tr.rank()
+        # for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
+        #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
+        print(tr.summarize(0.1))
