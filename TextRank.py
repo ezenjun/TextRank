@@ -4,10 +4,11 @@ import re
 import json
 import chardet
 from multiprocessing import Pipe, Process
+from konlpy.tag import Komoran
+import multiprocessing
 
-
-with open('./result.json') as json_file:
-        data = json.load(json_file)
+# with open('./result.json') as json_file:
+#         data = json.load(json_file)
 #안쓰고
 class RawSentence:
     def __init__(self, textIter):
@@ -239,23 +240,25 @@ class TextRank:
 #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
 # print(tr.summarize(0.1))
 
-def rank(i,conn):
-    text = i['body']
+tagger = Komoran()
+def rank(i):
     # print(re.compile('([.!?:](?:["\']|(?![0-9])))').split(text))
+    print("------------------------------------------------------------------------")
+    # print(i)
+    text = i['body']
     tr = TextRank()
-    from konlpy.tag import Komoran
-    tagger = Komoran()
+    # # tagger = Komoran()
     stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
     tr.loadSents(RawSentenceReader(text), lambda sent: filter(lambda x: x not in stopword and x[1] in ('NNG', 'NNP', 'VV', 'VA'), tagger.pos(sent)))
-    # print('Build...')
+    # # print('Build...')
     tr.build()
     # ranks = tr.rank()
-    # for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
-    #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
-    # print(i['source'])
-    # print(tr.summarize(0.1))
-    conn.send([tr.summarize(0.1)])
-    conn.close()
+    # # for k in sorted(ranks, key=ranks.get, reverse=True)[:100]:
+    # #     print("\t".join([str(k), str(ranks[k]), str(tr.dictCount[k])]))
+    # # print(i['source'])
+    print(tr.summarize(0.1))
+    # # conn.send([tr.summarize(0.1)])
+    # # conn.close()
 
 if __name__=='__main__':
     # with open('./result.json') as json_file:
@@ -265,23 +268,29 @@ if __name__=='__main__':
     # tagger = Komoran()
     # stopword = set([('있', 'VV'), ('하', 'VV'), ('되', 'VV'), ('는', 'VV'), ('을','VV'), ('를', 'VV') ])
     result=[]
-        
-    processes = []
-    parent_connections = []
-    for i  in data:
-        parent_conn, child_conn=Pipe()
-        p=Process(target=rank, args=(i,child_conn,))
-        parent_connections.append(parent_conn)
-        processes.append(p)
+    # processes = []
+    # parent_connections = []
+    tagger = Komoran()
+    with open('./result.json') as json_file:
+        data = json.load(json_file)
+    # for i in range(len(data)):
 
-    for process in processes:
-        process.start()
+    pool = multiprocessing.Pool(processes = 4)
+    pool.map(rank, data)
+    pool.close()
+    pool.join
+    # for i in data:
+    #     parent_conn, child_conn=Pipe()
+    #     p=Process(target=rank, args=(i,child_conn,))
+    #     parent_connections.append(parent_conn)
+    #     processes.append(p)
+
+    # for process in processes:
+    #     process.start()
             
-    for process in processes:
-        process.join()    
+    # for process in processes:
+    #     process.join()    
 
-    for parent_connection in parent_connections:
-        result.append(parent_connection.recv())
-    print(result)
-
-            
+    # for parent_connection in parent_connections:
+    #     result.append(parent_connection.recv())
+    # print(result)
