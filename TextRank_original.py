@@ -43,11 +43,11 @@ class RawSentenceReader:
 
     def __iter__(self):
         #for line in open(self.text, encoding='utf-8'):
-        for line in self.text:
-            ch = self.rgxSplitter.split(line)
-            for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
-                if not s: continue
-                yield s
+        line = self.text
+        ch = self.rgxSplitter.split(line)
+        for s in map(lambda a, b: a + b, ch[::2], ch[1::2]):
+            if not s: continue
+            yield s
 
 class RawTagger:
     def __init__(self, textIter, tagger=None):
